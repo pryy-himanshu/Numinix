@@ -30,7 +30,7 @@ export function Header() {
               <>
                 <div className="flex items-center space-x-2 bg-gradient-to-r from-yellow-50 to-orange-50 px-4 py-2 rounded-full border border-yellow-200/50 shadow-sm">
                   <Coins className="h-4 w-4 text-yellow-600" />
-                  <span className="text-lg font-bold text-yellow-700">{userProfile.money}</span>
+                  <span className="text-lg font-bold text-yellow-700">{userProfile.total_coins}</span>
                   <span className="text-xs text-yellow-600 hidden sm:inline">coins</span>
                 </div>
                 

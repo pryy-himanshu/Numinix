@@ -1,5 +1,5 @@
 import React from 'react';
-import { Grid3X3, Puzzle, Brain, Target, Sparkles, Crown, Zap } from 'lucide-react';
+import { Grid3X3, Puzzle, Brain, Target, Crown } from 'lucide-react';
 import { GameCard } from './GameCard';
 
 import Sudoku from './Sudoku';
@@ -43,6 +43,9 @@ export function Games() {
   const [showNumberPuzzle, setShowNumberPuzzle] = React.useState(false);
   const [showBrainTeaser, setShowBrainTeaser] = React.useState(false);
   const [showTargetNumber, setShowTargetNumber] = React.useState(false);
+
+  // Game stats state
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 pb-20 relative overflow-hidden">
@@ -120,32 +123,7 @@ export function Games() {
           ))}
         </div>
 
-        {/* Game Stats Section */}
-        <div className="bg-black/30 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl border border-white/20">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-white mb-2 flex items-center justify-center space-x-2">
-              <Sparkles className="h-6 w-6 text-yellow-400 animate-pulse" />
-              <span>Gaming Statistics</span>
-              <Zap className="h-6 w-6 text-blue-400 animate-bounce" />
-            </h2>
-            <p className="text-gray-300">Track your gaming progress and achievements</p>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="bg-gradient-to-r from-blue-900/40 to-indigo-900/40 rounded-2xl p-6 border border-blue-500/30 text-center">
-              <div className="text-3xl font-bold text-blue-400 mb-2">0</div>
-              <div className="text-blue-200 text-sm">Games Played</div>
-            </div>
-            <div className="bg-gradient-to-r from-green-900/40 to-emerald-900/40 rounded-2xl p-6 border border-green-500/30 text-center">
-              <div className="text-3xl font-bold text-green-400 mb-2">0</div>
-              <div className="text-green-200 text-sm">Games Won</div>
-            </div>
-            <div className="bg-gradient-to-r from-purple-900/40 to-violet-900/40 rounded-2xl p-6 border border-purple-500/30 text-center">
-              <div className="text-3xl font-bold text-purple-400 mb-2">0</div>
-              <div className="text-purple-200 text-sm">High Score</div>
-            </div>
-          </div>
-        </div>
+        {/* ...existing code... */}
       </div>
 
       {/* Enhanced Game Modals */}

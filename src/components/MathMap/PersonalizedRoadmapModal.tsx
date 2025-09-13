@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Brain, Clock, Target, BookOpen, Sparkles, Trophy, Zap, Crown, ArrowRight, CheckCircle, Star, TrendingUp, Play } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ProgressTrackingService } from '../../services/progressTrackingService';
+import ReactMarkdown from 'react-markdown';
+import { useNavigate } from 'react-router-dom';
 
 interface PersonalizedRoadmapModalProps {
   chapterId: string;
   chapterName: string;
   onClose: () => void;
+  setShowNavigation: (show: boolean) => void;
 }
 
 interface PersonalizedRoadmap {
@@ -37,13 +40,14 @@ interface PersonalizedContent {
   usage_count: number;
 }
 
-export function PersonalizedRoadmapModal({ chapterId, chapterName, onClose }: PersonalizedRoadmapModalProps) {
+export function PersonalizedRoadmapModal({ chapterId, chapterName, onClose, setShowNavigation }: PersonalizedRoadmapModalProps) {
   const { userProfile } = useAuth();
   const [roadmap, setRoadmap] = useState<PersonalizedRoadmap | null>(null);
   const [personalizedContent, setPersonalizedContent] = useState<{ [topic: string]: PersonalizedContent }>({});
   const [aiInsights, setAiInsights] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'roadmap' | 'content' | 'insights'>('roadmap');
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (userProfile) {
@@ -67,9 +71,27 @@ export function PersonalizedRoadmapModal({ chapterId, chapterName, onClose }: Pe
       // Load personalized content for chapter topics
       const sampleTopics = ['Introduction', 'Core Concepts', 'Applications'];
       const contentData: { [topic: string]: PersonalizedContent } = {};
-      
-      for (const topic of sampleTopics) {
-        const content = await ProgressTrackingService.getPersonalizedContent(userProfile.id, chapterId, topic);
+
+      // Only Introduction and Applications
+      const topics = ['Introduction', 'Applications'];
+      for (const topic of topics) {
+        const performance = {
+          classLevel: userProfile.class_level,
+          testScore: roadmapData?.diagnostic?.score_percentage || 0,
+          strengths: roadmapData?.strongAreas || [],
+          weaknesses: roadmapData?.weakAreas || [],
+          fullName: userProfile.name
+        };
+        // For Applications, ask AI specifically for real-world uses
+        const aiTopic = topic === 'Applications'
+          ? `What are the real-world applications of the chapter '${chapterName}'? Explain in detail for ${performance.fullName || 'the student'}.`
+          : topic;
+        const content = await ProgressTrackingService.getPersonalizedContent(
+          userProfile.id,
+          chapterId,
+          aiTopic,
+          performance
+        );
         if (content) {
           contentData[topic] = content;
         }
@@ -114,7 +136,7 @@ export function PersonalizedRoadmapModal({ chapterId, chapterName, onClose }: Pe
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-black/40 backdrop-blur-2xl rounded-3xl max-w-6xl w-full max-h-[90vh] border border-white/20 shadow-2xl flex flex-col">
+  <div className="bg-black/40 backdrop-blur-2xl rounded-3xl max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-white/20 shadow-2xl scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {/* Header */}
         <div className="p-8 border-b border-white/20">
           <div className="flex justify-between items-center mb-6">
@@ -159,7 +181,7 @@ export function PersonalizedRoadmapModal({ chapterId, chapterName, onClose }: Pe
         </div>
 
         {/* Content */}
-        <div className="p-8 overflow-y-auto flex-1 scrollbar-hide">
+        <div className="p-8">
           {activeTab === 'roadmap' && (
             <div className="space-y-8">
               {roadmap ? (
@@ -222,7 +244,6 @@ export function PersonalizedRoadmapModal({ chapterId, chapterName, onClose }: Pe
                           }`}>
                             {index < roadmap.current_step ? <CheckCircle className="h-6 w-6" /> : step.step_number}
                           </div>
-                          
                           <div className="flex-1">
                             <div className="flex items-center justify-between mb-3">
                               <h5 className="text-xl font-bold text-white">{step.title}</h5>
@@ -231,36 +252,22 @@ export function PersonalizedRoadmapModal({ chapterId, chapterName, onClose }: Pe
                                 <span className="text-blue-300 text-sm">{step.estimated_time_minutes} min</span>
                               </div>
                             </div>
-                            
-                            <p className="text-gray-300 mb-4">{step.description}</p>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                              <div>
-                                <h6 className="font-semibold text-blue-200 mb-2">Concepts to Master:</h6>
-                                <ul className="space-y-1">
-                                  {step.concepts?.map((concept: string, conceptIndex: number) => (
-                                    <li key={conceptIndex} className="text-blue-100 flex items-center space-x-2">
-                                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                                      <span>{concept}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                              
-                              <div>
-                                <h6 className="font-semibold text-green-200 mb-2">Resources:</h6>
-                                <ul className="space-y-1">
-                                  {step.resources?.map((resource: string, resourceIndex: number) => (
-                                    <li key={resourceIndex} className="text-green-100 flex items-center space-x-2">
-                                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                      <span>{resource}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
+                            {/* AI-generated content based on user data, markdown formatted */}
+                            <div className="prose prose-invert max-w-none text-gray-100 mb-4">
+                              <ReactMarkdown>{step.ai_content}</ReactMarkdown>
                             </div>
-                            
-                            <div className="bg-black/20 rounded-lg p-3">
+                            <div>
+                              <h6 className="font-semibold text-blue-200 mb-2">Concepts to Master:</h6>
+                              <ul className="space-y-1">
+                                {step.concepts?.map((concept: string, conceptIndex: number) => (
+                                  <li key={conceptIndex} className="text-blue-100 flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                                    <span>{concept}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div className="bg-black/20 rounded-lg p-3 mt-4">
                               <div className="flex items-center space-x-2 mb-2">
                                 <Trophy className="h-4 w-4 text-yellow-400" />
                                 <span className="font-semibold text-yellow-300">Success Criteria:</span>
@@ -347,13 +354,10 @@ export function PersonalizedRoadmapModal({ chapterId, chapterName, onClose }: Pe
                           </span>
                         </div>
                       </div>
-                      
-                      <div className="prose prose-invert max-w-none">
-                        <div className="text-indigo-100 leading-relaxed whitespace-pre-line">
-                          {content.personalized_content}
-                        </div>
+                      {/* Render explanation and applications using ReactMarkdown for proper formatting */}
+                      <div className="prose prose-invert max-w-none text-indigo-100 leading-relaxed">
+                        <ReactMarkdown>{content.personalized_content}</ReactMarkdown>
                       </div>
-                      
                       {content.user_weaknesses.length > 0 && (
                         <div className="mt-4 p-4 bg-indigo-800/20 rounded-lg">
                           <h5 className="font-semibold text-indigo-300 mb-2">Addressing Your Challenges:</h5>
@@ -403,28 +407,13 @@ export function PersonalizedRoadmapModal({ chapterId, chapterName, onClose }: Pe
                         <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                           {index + 1}
                         </div>
-                        <div className="flex-1">
-                          <p className="text-emerald-100 leading-relaxed text-lg">{insight}</p>
+                        <div className="space-y-8">
+                          <h3 className="text-2xl font-bold text-white mb-6 flex items-center space-x-2">
+                            <BookOpen className="h-6 w-6 text-blue-400" />
+                            <span>Personalized Study Content</span>
+                          </h3>
+                          {/* AI Insights content here if needed */}
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  <div className="bg-gradient-to-r from-blue-900/30 to-indigo-900/30 rounded-2xl p-6 border border-blue-500/20">
-                    <h4 className="text-xl font-bold text-blue-300 mb-4 flex items-center space-x-2">
-                      <Target className="h-6 w-6" />
-                      <span>How to Improve</span>
-                    </h4>
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-3 p-3 bg-blue-800/20 rounded-lg">
-                        <Play className="h-5 w-5 text-blue-400" />
-                        <span className="text-blue-100">Practice daily for 15-20 minutes consistently</span>
-                      </div>
-                      <div className="flex items-center space-x-3 p-3 bg-blue-800/20 rounded-lg">
-                        <Play className="h-5 w-5 text-blue-400" />
-                        <span className="text-blue-100">Focus on understanding concepts, not just memorizing</span>
-                      </div>
-                      <div className="flex items-center space-x-3 p-3 bg-blue-800/20 rounded-lg">
                         <Play className="h-5 w-5 text-blue-400" />
                         <span className="text-blue-100">Review mistakes and understand why they happened</span>
                       </div>
@@ -433,7 +422,7 @@ export function PersonalizedRoadmapModal({ chapterId, chapterName, onClose }: Pe
                         <span className="text-blue-100">Use the AI tutor when you're stuck on problems</span>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
               ) : (
                 <div className="text-center py-12">
@@ -453,26 +442,23 @@ export function PersonalizedRoadmapModal({ chapterId, chapterName, onClose }: Pe
         </div>
 
         {/* Footer Actions */}
-        <div className="p-8 border-t border-white/20 flex-shrink-0">
+        <div className="p-8 border-t border-white/20">
           <div className="flex space-x-4">
-            <button 
+            {activeTab !== 'content' && (
+              <button
+                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-2xl hover:from-green-700 hover:to-emerald-700 transition-all font-semibold text-lg flex items-center justify-center space-x-2"
+                onClick={() => setActiveTab('content')}
+              >
+                <Play className="h-5 w-5" />
+                <span>Start Learning</span>
+              </button>
+            )}
+            <button
+              className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold text-lg flex items-center justify-center space-x-2"
               onClick={() => {
-                // Navigate to chapter content or start learning
-                onClose();
-              }}
-              className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-2xl hover:from-green-700 hover:to-emerald-700 transition-all font-semibold text-lg flex items-center justify-center space-x-2"
-            >
-              <Play className="h-5 w-5" />
-              <span>Start Learning</span>
-            </button>
-            <button 
-              onClick={() => {
-                // Store selected chapter in localStorage for quiz
-                localStorage.setItem('selectedChapterForQuiz', JSON.stringify([chapterId]));
-                onClose();
+                setShowNavigation(true);
                 navigate('/quiz');
               }}
-              className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold text-lg flex items-center justify-center space-x-2"
             >
               <Trophy className="h-5 w-5" />
               <span>Take Practice Quiz</span>

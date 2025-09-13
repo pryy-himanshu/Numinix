@@ -156,16 +156,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const newTotalCorrect = (userProfile?.total_correct || 0) + correct;
     const newTotalWrong = (userProfile?.total_wrong || 0) + wrong;
-    const newMoney = Math.floor((userProfile?.money || 0) + money);
+    const newTotalCoins = Math.floor((userProfile?.total_coins || 0) + money);
 
-    console.log('[updateUserStats] Updating user:', user.id, 'Money:', newMoney, 'Correct:', newTotalCorrect, 'Wrong:', newTotalWrong);
+    console.log('[updateUserStats] Updating user:', user.id, 'Total Coins:', newTotalCoins, 'Correct:', newTotalCorrect, 'Wrong:', newTotalWrong);
 
     const { error } = await supabase
       .from('user_profiles')
       .update({
         total_correct: newTotalCorrect,
         total_wrong: newTotalWrong,
-        money: newMoney,
+        total_coins: newTotalCoins,
       })
       .eq('id', user.id);
 
@@ -178,7 +178,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ...prev, 
       total_correct: newTotalCorrect, 
       total_wrong: newTotalWrong, 
-      money: newMoney 
+      total_coins: newTotalCoins 
     } : prev);
 
     fetchUserProfile(user.id);

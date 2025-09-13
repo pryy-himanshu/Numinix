@@ -159,7 +159,7 @@ export function Dashboard() {
                   <Coins className="h-7 w-7 text-white animate-bounce" />
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-yellow-400 group-hover:text-yellow-300 transition-colors">{userProfile.money || 0}</div>
+                  <div className="text-3xl font-bold text-yellow-400 group-hover:text-yellow-300 transition-colors">{userProfile.total_coins || 0}</div>
                   <div className="text-sm text-yellow-200">Coins</div>
                 </div>
               </div>
@@ -199,8 +199,8 @@ export function Dashboard() {
                 </div>
                 <div>
                   <div className="text-3xl font-bold text-purple-400 group-hover:text-purple-300 transition-colors">
-                    {(userProfile.total_correct_answers || 0) + (userProfile.total_wrong || 0) > 0 
-                      ? Math.round(((userProfile.total_correct_answers || 0) / ((userProfile.total_correct_answers || 0) + (userProfile.total_wrong || 0))) * 100)
+                    {(userProfile.total_correct || 0) + (userProfile.total_wrong || 0) > 0 
+                      ? Math.round(((userProfile.total_correct || 0) / ((userProfile.total_correct || 0) + (userProfile.total_wrong || 0))) * 100)
                       : 0}%
                   </div>
                   <div className="text-sm text-purple-200">Accuracy</div>

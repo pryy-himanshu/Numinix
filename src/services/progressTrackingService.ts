@@ -47,64 +47,6 @@ export interface ChapterDiagnostic {
   score_percentage: number;
   time_taken_minutes: number;
   strengths: string[];
-  weaknesses: string[];
-  knowledge_gaps: string[];
-  prerequisite_concepts: string[];
-  difficulty_level: 'beginner' | 'intermediate' | 'advanced';
-  raw_responses: any;
-}
-
-export interface PersonalizedRoadmap {
-  id?: string;
-  user_id: string;
-  chapter_id: string;
-  roadmap_data: any;
-  current_step: number;
-  total_steps: number;
-  completion_percentage: number;
-  focus_areas: string[];
-  priority_concepts: string[];
-  last_updated: string;
-}
-
-export interface PersonalizedContent {
-  id?: string;
-  user_id: string;
-  chapter_id: string;
-  topic: string;
-  content_type: 'explanation' | 'example' | 'practice' | 'summary';
-  personalized_content: string;
-  difficulty_level: 'beginner' | 'intermediate' | 'advanced';
-  user_weaknesses: string[];
-  user_strengths: string[];
-  last_updated: string;
-  effectiveness_score: number;
-  usage_count: number;
-}
-
-export interface AIRecommendation {
-  id?: string;
-  user_id: string;
-  recommendation_type: 'weakness_fix' | 'concept_review' | 'practice_suggestion';
-  chapter_id?: string;
-  concept?: string;
-  weakness_area?: string;
-  recommendation_text: string;
-  study_materials: any;
-  practice_questions: any;
-  estimated_time_minutes: number;
-  priority_level: number;
-  status: 'pending' | 'in_progress' | 'completed' | 'dismissed';
-}
-
-export interface ConceptMastery {
-  id?: string;
-  user_id: string;
-  chapter_id: string;
-  concept: string;
-  mastery_level: number;
-  attempts_count: number;
-  correct_attempts: number;
   last_practiced_at?: string;
   time_to_master_minutes: number;
   difficulty_progression: string[];
@@ -224,15 +166,17 @@ export class ProgressTrackingService {
       // Save or update roadmap
       const { error } = await supabase
         .from('personalized_roadmaps')
-        .upsert({
-          user_id: userId,
-          chapter_id: chapterId,
-          roadmap_data: roadmapData,
-          focus_areas: weakAreas,
-          priority_concepts: roadmapData.priority_concepts || [],
-          total_steps: roadmapData.steps?.length || 0,
-          last_updated: new Date().toISOString()
-        });
+        .upsert([
+          {
+            user_id: userId,
+            chapter_id: chapterId,
+            roadmap_data: roadmapData,
+            focus_areas: weakAreas,
+            priority_concepts: roadmapData.priority_concepts || [],
+            total_steps: roadmapData.steps?.length || 0,
+            last_updated: new Date().toISOString()
+          }
+        ], { onConflict: 'user_id,chapter_id' });
 
       if (error) throw error;
     } catch (error) {
@@ -250,8 +194,14 @@ Student Performance Data:
 - Diagnostic Score: ${data.diagnostic.score_percentage}%
 - Strengths: ${data.strongAreas.join(', ') || 'None identified'}
 - Weak Areas: ${data.weakAreas.join(', ') || 'None identified'}
-- Knowledge Gaps: ${data.diagnostic.knowledge_gaps.join(', ') || 'None'}
+- Knowledge Gaps: ${data.diagnostic.knowledge_gaps?.join(', ') || 'None'}
 - Recent Performance: ${data.recentAttempts.length} recent attempts
+
+For each step, provide a realistic, data-driven estimate for "estimated_time_minutes" based on:
+- The student's diagnostic score and performance
+- The difficulty of the concepts in that step
+- Average time students spend on similar concepts (e.g. 10-20 min for easy, 20-40 min for medium, 40-60 min for hard)
+- If the student is weak in a concept, increase the time estimate
 
 Create a personalized roadmap as JSON with this exact structure:
 {
@@ -279,7 +229,7 @@ Requirements:
 - 5-8 steps in logical learning order
 - Address weak areas first
 - Build on strengths
-- Include specific time estimates
+- Include specific, realistic time estimates for each step
 - Motivational and encouraging tone
 - Return only valid JSON`;
 
@@ -287,24 +237,26 @@ Requirements:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: MODEL_NAME,
+          model: MODEL_NAME || 'openai/gpt-oss-20b',
           messages: [{ role: "user", content: prompt }]
         })
       });
 
       if (response.ok) {
         const result = await response.json();
-        
         if (result?.choices?.[0]?.message?.content) {
           let text = result.choices[0].message.content.trim();
           text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
-          
           try {
             return JSON.parse(text);
           } catch (parseError) {
             console.error('Error parsing roadmap JSON:', parseError);
           }
         }
+      } else {
+        // Show a clear error message instead of 'Continue to iterate?'
+        const errorText = await response.text();
+        throw new Error(`GROQ API error: ${response.status} - ${errorText}`);
       }
     } catch (error) {
       console.error('Error generating AI roadmap:', error);
@@ -498,15 +450,17 @@ Return only the JSON array of insights.`;
       // Save or update content
       const { error } = await supabase
         .from('personalized_content')
-        .upsert({
-          user_id: userId,
-          chapter_id: chapterId,
-          topic,
-          content_type: 'explanation',
-          personalized_content: content,
-          difficulty_level: difficultyLevel,
-          last_updated: new Date().toISOString()
-        });
+        .upsert([
+          {
+            user_id: userId,
+            chapter_id: chapterId,
+            topic,
+            content_type: 'explanation',
+            personalized_content: content,
+            difficulty_level: difficultyLevel,
+            last_updated: new Date().toISOString()
+          }
+        ], { onConflict: 'user_id,chapter_id,topic' });
 
       if (error) throw error;
     } catch (error) {
@@ -583,17 +537,45 @@ Remember, every expert was once a beginner. You're doing great! 💪`;
   // Get personalized roadmap for a chapter
   static async getPersonalizedRoadmap(userId: string, chapterId: string): Promise<PersonalizedRoadmap | null> {
     try {
-      const { data, error } = await supabase
-        .from('personalized_roadmaps')
+      // Always generate roadmap using AI
+      // Fetch diagnostic and performance data
+      const { data: diagnostic } = await supabase
+        .from('chapter_diagnostics')
         .select('*')
         .eq('user_id', userId)
         .eq('chapter_id', chapterId)
         .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
-      return data;
+      const { data: attempts } = await supabase
+        .from('question_attempts')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('chapter_id', chapterId);
+      const conceptPerformance = this.analyzeConceptPerformance(attempts || []);
+      const weakAreas = Object.entries(conceptPerformance)
+        .filter(([_, stats]: [string, any]) => stats.accuracy < 70)
+        .map(([concept, _]) => concept);
+      const strongAreas = Object.entries(conceptPerformance)
+        .filter(([_, stats]: [string, any]) => stats.accuracy >= 80)
+        .map(([concept, _]) => concept);
+      const roadmapData = await this.generateAIRoadmap(userId, chapterId, {
+        diagnostic,
+        weakAreas,
+        strongAreas,
+        recentAttempts: attempts?.slice(-10) || []
+      });
+      return {
+        user_id: userId,
+        chapter_id: chapterId,
+        roadmap_data: roadmapData,
+        focus_areas: weakAreas,
+        priority_concepts: roadmapData.priority_concepts || [],
+        total_steps: roadmapData.steps?.length || 0,
+        current_step: 0,
+        completion_percentage: 0,
+        last_updated: new Date().toISOString()
+      };
     } catch (error) {
-      console.error('Error getting personalized roadmap:', error);
+      console.error('Error generating personalized roadmap:', error);
       return null;
     }
   }
@@ -610,7 +592,42 @@ Remember, every expert was once a beginner. You're doing great! 💪`;
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
-      return data;
+      if (data) return data;
+
+      // If no personalized content, generate it using AI and performance
+      if (arguments.length === 4) {
+        const performance = arguments[3];
+        // Compose prompt for AI
+        const prompt = `You are an expert math tutor. The student ${performance.fullName || 'the student'} is in class ${performance.classLevel} and scored ${performance.testScore}% in the diagnostic test. Their strengths: ${performance.strengths.join(', ') || 'None'}. Weaknesses: ${performance.weaknesses.join(', ') || 'None'}. Explain the chapter '${topic}' in a way that matches the user performance level and very wel user should understand . Explain complete '${topic}' in very detailed and nice understanding way to ${performance.fullName || 'the student'} he should feel like this content is just made for me`;
+        // Call AI model to generate content
+        let aiContent = '';
+        try {
+          aiContent = await ProgressTrackingService.generatePersonalizedContent(
+            userId,
+            chapterId,
+            topic,
+            'intermediate',
+            true,
+            topic
+          );
+        } catch (err) {
+          aiContent = `Based on your score (${performance.testScore}%) and current strengths (${performance.strengths.join(', ') || 'None'}) and weaknesses (${performance.weaknesses.join(', ') || 'None'}), here's a tailored explanation for ${topic}.`;
+        }
+        return {
+          user_id: userId,
+          chapter_id: chapterId,
+          topic,
+          content_type: 'explanation',
+          personalized_content: aiContent,
+          difficulty_level: 'intermediate',
+          user_weaknesses: performance.weaknesses,
+          user_strengths: performance.strengths,
+          last_updated: new Date().toISOString(),
+          effectiveness_score: 0,
+          usage_count: 1
+        };
+      }
+      return null;
     } catch (error) {
       console.error('Error getting personalized content:', error);
       return null;
@@ -1152,6 +1169,10 @@ ${data.weaknesses.length > 0 ? `Focus on ${data.weaknesses[0]} in your upcoming 
         .eq('status', 'pending')
         .order('priority_level', { ascending: false });
 
+      // Calculate total study time from sessions and question attempts
+      const sessionMinutes = sessions?.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0;
+      const attemptMinutes = attempts?.reduce((sum, a) => sum + ((a.time_taken_seconds || 0) / 60), 0) || 0;
+      const totalStudyTime = Math.round(sessionMinutes + attemptMinutes);
       return {
         attempts: attempts || [],
         sessions: sessions || [],
@@ -1161,7 +1182,7 @@ ${data.weaknesses.length > 0 ? `Focus on ${data.weaknesses[0]} in your upcoming 
           totalQuestions: attempts?.length || 0,
           correctAnswers: attempts?.filter(a => a.is_correct).length || 0,
           accuracy: attempts?.length ? (attempts.filter(a => a.is_correct).length / attempts.length) * 100 : 0,
-          totalStudyTime: sessions?.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0,
+          totalStudyTime,
           conceptsMastered: mastery?.filter(m => m.mastery_level >= 0.8).length || 0
         }
       };

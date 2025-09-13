@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Coins, Clock, CheckCircle, XCircle, Trophy, ArrowLeft, Sparkles, Zap, Crown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Question } from '../../types';
@@ -95,7 +96,9 @@ export function Quiz() {
                 <span>🤖 AI Generated Questions</span>
                 <Zap className="h-6 w-6 animate-bounce" />
               </div>
-              <div className="text-sm text-blue-100 mt-2">Fresh, personalized challenges</div>
+              <div className="text-sm text-blue-100 mt-2">
+                Questions made only for you.
+              </div>
             </button>
             
             <button
@@ -155,7 +158,10 @@ export function Quiz() {
       
       // Shuffle and pick 10 random questions
       const shuffled = availableQuestions.sort(() => Math.random() - 0.5);
-      const selected = shuffled.slice(0, 10);
+      const selected = shuffled.slice(0, 10).map(q => ({
+        ...q,
+        difficulty: q.difficulty as 'easy' | 'medium' | 'hard'
+      }));
       setQuestions(selected);
       setUsedQuestionIds(prev => [...prev, ...selected.map(q => q.id)]);
     }
@@ -569,7 +575,9 @@ export function Quiz() {
                 </span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-bold text-white leading-relaxed mb-4">
-                {current.question}
+                <div className="prose prose-invert max-w-none">
+                  <ReactMarkdown>{current.question}</ReactMarkdown>
+                </div>
               </h2>
             </div>
 
@@ -623,7 +631,9 @@ export function Quiz() {
                   <Sparkles className="h-6 w-6 animate-pulse" />
                   <span>Explanation:</span>
                 </h3>
-                <p className="text-blue-100 leading-relaxed text-lg">{current.explanation}</p>
+                <div className="prose prose-invert max-w-none" style={{color: 'white'}}>
+                  <ReactMarkdown>{current.explanation}</ReactMarkdown>
+                </div>
               </div>
             )}
 

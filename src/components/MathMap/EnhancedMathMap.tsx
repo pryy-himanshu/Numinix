@@ -8,11 +8,17 @@ import { PersonalizedRoadmapModal } from './PersonalizedRoadmapModal';
 interface EnhancedMathMapProps {
   chapterDiagnostics: { [key: string]: ChapterDiagnostic };
   onChapterClick: (chapter: any) => void;
+  setShowNavigation: (show: boolean) => void;
 }
 
-export function EnhancedMathMap({ chapterDiagnostics, onChapterClick }: EnhancedMathMapProps) {
+export function EnhancedMathMap({ chapterDiagnostics, onChapterClick, setShowNavigation }: EnhancedMathMapProps) {
   const { userProfile, updateUserProfile } = useAuth();
-  const [showRoadmapModal, setShowRoadmapModal] = useState<{ chapterId: string; chapterName: string } | null>(null);
+  const [showRoadmapModal, setShowRoadmapModal] = useState(false);
+  const [selectedChapter, setSelectedChapter] = useState<any>(null);
+
+  useEffect(() => {
+    setShowNavigation(!showRoadmapModal);
+  }, [showRoadmapModal, setShowNavigation]);
   const [userAnalytics, setUserAnalytics] = useState<any>(null);
 
   useEffect(() => {
@@ -81,7 +87,8 @@ export function EnhancedMathMap({ chapterDiagnostics, onChapterClick }: Enhanced
   };
 
   const handleExploreChapter = (chapter: any) => {
-    setShowRoadmapModal({ chapterId: chapter.id, chapterName: chapter.chapter });
+    setSelectedChapter(chapter);
+    setShowRoadmapModal(true);
   };
 
   const getChapterIcon = (status: string) => {
@@ -329,9 +336,13 @@ export function EnhancedMathMap({ chapterDiagnostics, onChapterClick }: Enhanced
         {/* Personalized Roadmap Modal */}
         {showRoadmapModal && (
           <PersonalizedRoadmapModal
-            chapterId={showRoadmapModal.chapterId}
-            chapterName={showRoadmapModal.chapterName}
-            onClose={() => setShowRoadmapModal(null)}
+            chapterId={selectedChapter?.id}
+            chapterName={selectedChapter?.chapter}
+            onClose={() => {
+              setShowRoadmapModal(false);
+              setSelectedChapter(null);
+            }}
+            setShowNavigation={setShowNavigation}
           />
         )}
       </div>

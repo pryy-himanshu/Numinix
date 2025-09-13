@@ -4,8 +4,8 @@ export interface User {
   phone?: string;
   name: string;
   class_level: number;
-  money: number;
-  total_correct_answers: number;
+  total_coins: number;
+  total_correct: number;
   total_wrong: number;
   avatar_id: number;
   unlocked_chapters: string[];

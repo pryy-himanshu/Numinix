@@ -199,6 +199,7 @@ function LandingPage({ showAuthDefault = false }: LandingPageProps) {
 
 function AppContent() {
   const { user, loading } = useAuth();
+  const [showNavigation, setShowNavigation] = useState(true);
 
   if (loading) {
     return (
@@ -222,7 +223,7 @@ function AppContent() {
     <AITutorProvider>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
         <Header />
-  <main className="relative pb-20 md:pb-24">
+        <main className="relative pb-20 md:pb-24">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/ai-tutor" element={<AITutor />} />
@@ -231,12 +232,12 @@ function AppContent() {
             <Route path="/tools" element={<Tools />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/math-map" element={<MathMap />} />
+            <Route path="/math-map" element={<MathMap setShowNavigation={setShowNavigation} />} />
             <Route path="/timer" element={<Timer />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-        <BottomNavigation />
+        {showNavigation && <BottomNavigation />}
       </div>
     </AITutorProvider>
   );

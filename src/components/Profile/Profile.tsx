@@ -14,10 +14,10 @@ export function Profile() {
   const [avatarLoading, setAvatarLoading] = useState(false);
 
   const handleAvatarPurchase = async (avatarId: number, cost: number) => {
-    if (!userProfile || userProfile.money < cost) return;
+    if (!userProfile || userProfile.total_coins < cost) return;
     
     await updateUserProfile({
-      money: userProfile.money - cost,
+      total_coins: userProfile.total_coins - cost,
       avatar_id: avatarId
     });
     setShowAvatarSelector(false);
@@ -142,8 +142,8 @@ export function Profile() {
                       <h2 className="text-2xl font-bold mb-6 text-center bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Choose Your Avatar</h2>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         {avatarsData.map((avatar) => {
-                          const isUnlocked = avatar.unlocked || (userProfile?.money ?? 0) >= avatar.cost;
-                          const canAfford = (userProfile?.money ?? 0) >= avatar.cost;
+                          const isUnlocked = avatar.unlocked || (userProfile?.total_coins ?? 0) >= avatar.cost;
+                          const canAfford = (userProfile?.total_coins ?? 0) >= avatar.cost;
                           return (
                             <div
                               key={avatar.id}
@@ -214,7 +214,7 @@ export function Profile() {
                 <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
                   <div className="flex items-center space-x-2 bg-gradient-to-r from-yellow-100 to-orange-100 px-4 py-2 rounded-full border border-yellow-200/50 shadow-sm">
                     <Coins className="h-4 w-4 text-yellow-600" />
-                    <span className="font-bold text-yellow-700">{userProfile?.money ?? 0}</span>
+                    <span className="font-bold text-yellow-700">{userProfile?.total_coins ?? 0}</span>
                     <span className="text-xs text-yellow-600">coins</span>
                   </div>
                   <div className="flex items-center space-x-2 bg-gradient-to-r from-emerald-100 to-green-100 px-4 py-2 rounded-full border border-emerald-200/50 shadow-sm">
@@ -364,7 +364,7 @@ export function Profile() {
               
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
                 {avatarsData.map((avatar) => {
-                  const canAfford = userProfile && userProfile.money >= avatar.cost;
+                  const canAfford = userProfile && userProfile.total_coins >= avatar.cost;
                   const isUnlocked = avatar.cost === 0 || canAfford;
                   
                   return (
